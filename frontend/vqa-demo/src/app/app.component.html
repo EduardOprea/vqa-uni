@@ -1,0 +1,27 @@
+<mat-card>
+  <mat-card-content>
+    <div class="center">
+      <img [src]="imgPath">
+    </div>
+    <br/>
+    <div class="center">
+      <mat-form-field class="example-form-field" appearance="fill">
+        <mat-label>Question</mat-label>
+        <input matInput type="text" [(ngModel)]="question">
+      </mat-form-field>
+      <button mat-raised-button (click)="onSendQuestionImagePair()">Send</button>
+      <button mat-raised-button (click)="onNextPhoto()">Change photo</button>
+    </div>
+    <div class = "center">
+      <div *ngIf="this.inferenceResult && this.inferenceResult.answerKnown == true">
+          Answer : {{this.inferenceResult.answer}}
+      </div>
+      <div *ngIf="this.inferenceResult && this.inferenceResult.answerKnown == false">
+        Image-question pair can not be answered
+    </div>
+      <div *ngIf="this.waitingResult === true">
+        <mat-spinner></mat-spinner>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>
