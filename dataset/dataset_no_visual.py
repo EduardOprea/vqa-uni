@@ -12,7 +12,12 @@ import json
 def assert_eq(real, expected):
     assert real == expected, '%s (true) vs %s (expected)' % (real, expected)
 
-def _load_dataset(dataroot, img_id2val, name = 'train'):
+
+
+
+
+
+def _load_dataset(dataroot, name = 'train'):
     question_path = os.path.join(
         dataroot, "Questions", f'v2_OpenEnded_mscoco_{name}2014_questions.json')
     questions = sorted(json.load(open(question_path))['questions'],
@@ -40,18 +45,16 @@ def _load_dataset(dataroot, img_id2val, name = 'train'):
         label['gt_answer'] = answer['multiple_choice_answer']
         label['answers_entropy'] = ans_entropy['answers_entropy']
         label['confidence_score'] = ans_entropy['confidence_score']
-        entries.append(_create_entry(img_id2val[img_id], question, label))
+        entries.append(_create_entry(question, label))
 
     return entries
 
-def _create_entry(img, question, answer):
+def _create_entry(question, answer):
     answer.pop('image_id')
     answer.pop('question_id')
     
     entry = {
         'question_id' : question['question_id'],
-        'image_id'    : question['image_id'],
-        'image'       : img,
         'question'    : question['question'],
         'answer'      : answer}
     
@@ -67,27 +70,20 @@ class SubsetSampler(Sampler):
     def __len__(self):
         return len(self.mask)
 
-class VQADataset(Dataset):
+class VQANoVisualFeaturesDataset(Dataset):
     # passing hf file handler as a parameter to be closed by the calling code 
-    def __init__(self, hf, name = 'train', dataroot='../data') -> None:
+    def __init__(self, name = 'train', dataroot='../data') -> None:
         super().__init__()
         # 2 posibile raspunsuri (known answer, unknown answer)
         self.num_ans_candidates = 2
 
-        # folosit pentru a putea incarca feature-urile pozei dupa img_id
-        self.img_id2idx = pickle.load(
-            open(os.path.join(dataroot,"preprocessed_img_features", '%s36_imgid2idx.pkl' % name), 'rb'))
-        print('loading features from h5 file')
-        self.features = hf['image_features']
-        self.entries = _load_dataset(dataroot, self.img_id2idx, name)
+        self.entries = _load_dataset(dataroot, name)
         print(f"dataset size is : {len(self.entries)}")
 
     def __len__(self) -> int:
         return len(self.entries)
     def __getitem__(self, index):
         entry = self.entries[index]
-        features = self.features[entry['image']]
-
         question = entry['question']
         answer = entry['answer']
         label = answer['label']
@@ -95,6 +91,6 @@ class VQADataset(Dataset):
         entropy = answer['answers_entropy']
         confidence = answer['confidence_score']
 
-        return features, question, label, gt_answer, entropy, confidence
+        return question, label, gt_answer, entropy, confidence
 
 

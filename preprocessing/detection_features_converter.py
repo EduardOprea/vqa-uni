@@ -37,11 +37,11 @@ while True:
 
 FIELDNAMES = ['image_id', 'image_w', 'image_h', 'num_boxes', 'boxes', 'features']
 infile = '../data/trainval_36/trainval_resnet101_faster_rcnn_genome_36.tsv'
-train_data_file = '../data/preprocessed_img_features/train36.hdf5'
+#train_data_file = '../data/preprocessed_img_features/train36.hdf5'
 val_data_file = '../data/preprocessed_img_features/val36.hdf5'
-train_indices_file = '../data/preprocessed_img_features/train36_imgid2idx.pkl'
+#train_indices_file = '../data/preprocessed_img_features/train36_imgid2idx.pkl'
 val_indices_file = '../data/preprocessed_img_features/val36_imgid2idx.pkl'
-train_ids_file = '../data/preprocessed_img_features/train_ids.pkl'
+#train_ids_file = '../data/preprocessed_img_features/train_ids.pkl'
 val_ids_file = '../data/preprocessed_img_features/val_ids.pkl'
 
 feature_length = 2048
@@ -64,34 +64,37 @@ def load_imageid(folder):
 
 
 if __name__ == '__main__':
-    h_train = h5py.File(train_data_file, "w")
+    #h_train = h5py.File(train_data_file, "w")
     h_val = h5py.File(val_data_file, "w")
 
-    if os.path.exists(train_ids_file) and os.path.exists(val_ids_file):
-        train_imgids = pickle.load(open(train_ids_file))
-        #val_imgids = pickle.load(open(val_ids_file))
+    if os.path.exists(val_ids_file):
+        #train_imgids = pickle.load(open(train_ids_file))
+        val_imgids = pickle.load(open(val_ids_file))
+    # if os.path.exists(train_ids_file) and os.path.exists(val_ids_file):
+    #     #train_imgids = pickle.load(open(train_ids_file))
+    #     val_imgids = pickle.load(open(val_ids_file))
     else:
-        train_imgids = load_imageid('../data/train2014')
-        #val_imgids = utils.load_imageid('../data/data/val2014')
-        pickle.dump(train_imgids, open(train_ids_file, 'wb'))
-        #pickle.dump(val_imgids, open(val_ids_file, 'wb'))
+        #train_imgids = load_imageid('../data/train2014')
+        val_imgids = load_imageid('../data/val2014')
+       # pickle.dump(train_imgids, open(train_ids_file, 'wb'))
+        pickle.dump(val_imgids, open(val_ids_file, 'wb'))
 
     train_indices = {}
     val_indices = {}
 
-    train_img_features = h_train.create_dataset(
-        'image_features', (len(train_imgids), num_fixed_boxes, feature_length), 'f')
-    train_img_bb = h_train.create_dataset(
-        'image_bb', (len(train_imgids), num_fixed_boxes, 4), 'f')
-    train_spatial_img_features = h_train.create_dataset(
-        'spatial_features', (len(train_imgids), num_fixed_boxes, 6), 'f')
+    # train_img_features = h_train.create_dataset(
+    #     'image_features', (len(train_imgids), num_fixed_boxes, feature_length), 'f')
+    # train_img_bb = h_train.create_dataset(
+    #     'image_bb', (len(train_imgids), num_fixed_boxes, 4), 'f')
+    # train_spatial_img_features = h_train.create_dataset(
+    #     'spatial_features', (len(train_imgids), num_fixed_boxes, 6), 'f')
 
-    # val_img_bb = h_val.create_dataset(
-    #     'image_bb', (len(val_imgids), num_fixed_boxes, 4), 'f')
-    # val_img_features = h_val.create_dataset(
-    #     'image_features', (len(val_imgids), num_fixed_boxes, feature_length), 'f')
-    # val_spatial_img_features = h_val.create_dataset(
-    #     'spatial_features', (len(val_imgids), num_fixed_boxes, 6), 'f')
+    val_img_bb = h_val.create_dataset(
+        'image_bb', (len(val_imgids), num_fixed_boxes, 4), 'f')
+    val_img_features = h_val.create_dataset(
+        'image_features', (len(val_imgids), num_fixed_boxes, feature_length), 'f')
+    val_spatial_img_features = h_val.create_dataset(
+        'spatial_features', (len(val_imgids), num_fixed_boxes, 6), 'f')
 
     train_counter = 0
     val_counter = 0
@@ -131,35 +134,35 @@ if __name__ == '__main__':
                  scaled_height),
                 axis=1)
 
-            if image_id in train_imgids:
-                train_imgids.remove(image_id)
-                train_indices[image_id] = train_counter
-                train_img_bb[train_counter, :, :] = bboxes
-                train_img_features[train_counter, :, :] = np.frombuffer(
+            # if image_id in train_imgids:
+            #     train_imgids.remove(image_id)
+            #     train_indices[image_id] = train_counter
+            #     train_img_bb[train_counter, :, :] = bboxes
+            #     train_img_features[train_counter, :, :] = np.frombuffer(
+            #         base64.decodestring(bytes(item['features'], encoding='utf-8')),
+            #         dtype=np.float32).reshape((item['num_boxes'], -1))
+            #     train_spatial_img_features[train_counter, :, :] = spatial_features
+            #     train_counter += 1
+            if image_id in val_imgids:
+                val_imgids.remove(image_id)
+                val_indices[image_id] = val_counter
+                val_img_bb[val_counter, :, :] = bboxes
+                val_img_features[val_counter, :, :] = np.frombuffer(
                     base64.decodestring(bytes(item['features'], encoding='utf-8')),
                     dtype=np.float32).reshape((item['num_boxes'], -1))
-                train_spatial_img_features[train_counter, :, :] = spatial_features
-                train_counter += 1
-            # elif image_id in val_imgids:
-            #     val_imgids.remove(image_id)
-            #     val_indices[image_id] = val_counter
-            #     val_img_bb[val_counter, :, :] = bboxes
-            #     val_img_features[val_counter, :, :] = np.frombuffer(
-            #         base64.decodestring(item['features']),
-            #         dtype=np.float32).reshape((item['num_boxes'], -1))
-            #     val_spatial_img_features[val_counter, :, :] = spatial_features
-            #     val_counter += 1
+                val_spatial_img_features[val_counter, :, :] = spatial_features
+                val_counter += 1
             # else:
             #     assert False, 'Unknown image id: %d' % image_id
 
-    if len(train_imgids) != 0:
-        print('Warning: train_image_ids is not empty')
+    # if len(train_imgids) != 0:
+    #     print('Warning: train_image_ids is not empty')
 
-    # if len(val_imgids) != 0:
-    #     print('Warning: val_image_ids is not empty')
+    if len(val_imgids) != 0:
+        print('Warning: val_image_ids is not empty')
 
-    pickle.dump(train_indices, open(train_indices_file, 'wb'))
+    #pickle.dump(train_indices, open(train_indices_file, 'wb'))
     pickle.dump(val_indices, open(val_indices_file, 'wb'))
-    h_train.close()
+    #h_train.close()
     h_val.close()
     print("done!")

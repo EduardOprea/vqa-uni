@@ -1,13 +1,8 @@
-from dataclasses import replace
-from random import sample
-from dataset.dataset import VQADataset
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from transformers import VisualBertForQuestionAnswering, BertTokenizerFast
+from dataset.dataset_no_visual import VQANoVisualFeaturesDataset
 from vqa_model import VQAModel
 import torch
-import utils
-import os
-import h5py
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -19,37 +14,21 @@ def save_checkpoint(path, epoch, model):
         'model_state_dict': model.state_dict()
     }, path)
 
-# **** INITIALIZING *****
-h5_path = os.path.join("../data/preprocessed_img_features", 'train36.hdf5' )
-hf = h5py.File(h5_path, 'r') 
-dataset = VQADataset(hf)
 
+dataset = VQANoVisualFeaturesDataset()
 
-VQA_URL = "https://dl.fbaipublicfiles.com/pythia/data/answers_vqa.txt"
-vqa_answers = utils.get_data(VQA_URL)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Available device {device}")
 bert_tokenizer = BertTokenizerFast.from_pretrained("bert-base-uncased")
 visualbert_vqa = VisualBertForQuestionAnswering.from_pretrained("uclanlp/visualbert-vqa")
 know_answer_vqa = VQAModel(visualbert_vqa.visual_bert, visualbert_vqa.cls, visualbert_vqa.config).to(device)
 
-
-
-# device = torch.device('cpu')
-
 # HYPERPARAMS, LOSS, OPTIMIZERS
 n_epochs = 5
-batch_size = 32
+batch_size = 16
 lr = 2e-4
 b1 = .5
 b2 = .999
-# weighting the loss
-# n_positive_samples = 406439
-# n_negative_samples = 37318
-# weight_negative = n_positive_samples/n_negative_samples
-# weight_positive = n_positive_samples/n_positive_samples
-# weights_loss = torch.tensor([weight_negative, weight_positive]).to(device)
-# bce_loss = nn.BCELoss(weight=weights_loss)
 bce_loss = nn.BCELoss()
 optimizer = optim.Adam(params = know_answer_vqa.answer_known_classifier.parameters(), lr = lr, betas=(b1,b2))
 
@@ -63,7 +42,6 @@ samples_weight = np.array([weight[t] for t in labels])
 samples_weight = torch.tensor(samples_weight)
 imbalanced_sampler = WeightedRandomSampler(weights=samples_weight, num_samples=len(samples_weight), replacement = True)
 
-# train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 train_loader = DataLoader(dataset, batch_size=batch_size, sampler=imbalanced_sampler, num_workers=0)
 
 loss_list = []
@@ -72,10 +50,9 @@ total_steps_epoch = int(dataset.__len__() / batch_size)
 for epoch in range(n_epochs):
     step = 0
     print(f'Start epoch {epoch + 1 }/{n_epochs}')
-    for index,(features,questions,labels) in enumerate(train_loader):
+    for index,(questions,labels, gt_answer, _, _) in enumerate(train_loader):
         # clear gradients
         optimizer.zero_grad()
-    
         questions = list(questions)
         with torch.no_grad():  
             tokens = bert_tokenizer(
@@ -89,20 +66,13 @@ for epoch in range(n_epochs):
                 return_tensors="pt",
             )
 
-        # move everthing to device   
-        # features = features.to(device)
-        # labels = labels.to(device)
-        # tokens = tokens.to(device)
         # compute network prediction
         output_vqa = know_answer_vqa(input_ids=tokens.input_ids.to(device),
                 attention_mask=tokens.attention_mask.to(device),
-                visual_embeds=features.to(device),
-                visual_attention_mask=torch.ones(features.shape[:-1]).to(device),
                 token_type_ids=tokens.token_type_ids.to(device),
                 output_attentions=False)
         # get prediction
         predicted_know_answer = output_vqa[4]
-
         # compute loss between prediction and target
         target_one_hot = F.one_hot(labels, num_classes=2).to(torch.float32).to(device)
 
@@ -121,6 +91,3 @@ for epoch in range(n_epochs):
         print(f'Completed step {step}/{total_steps_epoch} with loss {loss}')
         
         step = step + 1
-
-
-hf.close()

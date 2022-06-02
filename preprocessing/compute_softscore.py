@@ -275,22 +275,38 @@ def get_question(qid, questions):
 
 
 if __name__ == '__main__':
-    train_answer_file = '../data/Annotations/v2_mscoco_train2014_annotations.json'
-    train_answers = json.load(open(train_answer_file))['annotations']
+    # compute target for training dataset
+    # train_answer_file = '../data/Annotations/v2_mscoco_train2014_annotations.json'
+    # train_answers = json.load(open(train_answer_file))['annotations']
 
-    # val_answer_file = 'data/v2_mscoco_val2014_annotations.json'
-    # val_answers = json.load(open(val_answer_file))['annotations']
+    # # val_answer_file = 'data/v2_mscoco_val2014_annotations.json'
+    # # val_answers = json.load(open(val_answer_file))['annotations']
 
-    train_question_file = '../data/Questions/v2_OpenEnded_mscoco_train2014_questions.json'
-    train_questions = json.load(open(train_question_file))['questions']
+    # train_question_file = '../data/Questions/v2_OpenEnded_mscoco_train2014_questions.json'
+    # train_questions = json.load(open(train_question_file))['questions']
 
-    # val_question_file = 'data/v2_OpenEnded_mscoco_val2014_questions.json'
-    # val_questions = json.load(open(val_question_file))['questions']
+    # # val_question_file = 'data/v2_OpenEnded_mscoco_val2014_questions.json'
+    # # val_questions = json.load(open(val_question_file))['questions']
 
-    answers = train_answers
-    occurence = filter_answers(answers, 9)
-    ans2label = create_ans2label(occurence, 'trainval')
-    #compute_target(train_answers, ans2label, 'train')
-    compute_target_know_answer(train_answers, ans2label, 'knowanswer')
-    print('done')
-    #compute_target(val_answers, ans2label, 'val')
+    # answers = train_answers
+    # occurence = filter_answers(answers, 9)
+    # ans2label = create_ans2label(occurence, 'trainval')
+    # #compute_target(train_answers, ans2label, 'train')
+    
+    # compute_target_know_answer(train_answers, ans2label, 'knowanswer')
+    # #compute_target(val_answers, ans2label, 'val')
+
+
+    # compute target for validation set
+    validation_answers_file = '../data/Annotations/v2_mscoco_val2014_annotations.json'
+    
+    validations_answers = json.load(open(validation_answers_file))['annotations']
+
+    # no need to compute popular answers from validation set, we use the ones from the training set
+    #occurence = filter_answers(validations_answers, 9)
+    
+    # load popular answer dictionary
+    ans2label = pickle.load(open('../data/cache/trainval_ans2label.pkl', 'rb'))
+    
+    compute_target_know_answer(validations_answers, ans2label, 'knowanswer_val')
+    print('Finish saving and computing targets for validation set')

@@ -41,9 +41,9 @@ bert_tokenizer = BertTokenizerFast.from_pretrained("bert-base-uncased")
 visualbert_vqa = VisualBertForQuestionAnswering.from_pretrained("uclanlp/visualbert-vqa")
 
 
-know_answer_vqa = VQAModel(visualbert_vqa.visual_bert, visualbert_vqa.cls, visualbert_vqa.config)
+#know_answer_vqa = VQAModel(visualbert_vqa.visual_bert, visualbert_vqa.cls, visualbert_vqa.config)
 
-images, sizes, scales_yx = image_preprocess('test.jpg')
+images, sizes, scales_yx = image_preprocess('COCO_train2014_000000000034.jpg')
 output_dict = frcnn(
     images,
     sizes,
@@ -55,11 +55,8 @@ output_dict = frcnn(
 
 
 test_questions_for_url2 = [
-    "Where is the cat?",
-    "What is near the disk?",
-    "What is the color of the table?",
-    "What is the color of the cat?",
-    "What is the shape of the monitor?",
+    "What color is the animal in the photo?",
+    "What color is the zebra?"
 ]
 
 # Very important that the boxes are normalized
@@ -79,14 +76,14 @@ for test_question in test_questions_for_url2:
         add_special_tokens=True,
         return_tensors="pt",
     )
-    output_vqa = know_answer_vqa(input_ids=inputs.input_ids,
+    output_vqa = visualbert_vqa(input_ids=inputs.input_ids,
             attention_mask=inputs.attention_mask,
             visual_embeds=features,
             visual_attention_mask=torch.ones(features.shape[:-1]),
             token_type_ids=inputs.token_type_ids,
             output_attentions=False)
     # get prediction
-    pred_vqa = output_vqa[1].argmax(-1)
+    pred_vqa = output_vqa["logits"].argmax(-1)
     print("Question:", test_question)
     print("prediction from VisualBert VQA:", vqa_answers[pred_vqa])
 
